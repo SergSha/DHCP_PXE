@@ -171,11 +171,62 @@ VM, run `vagrant status NAME`.
 
 <p>Выполнение команды закончится с ошибкой, так как на Pxeclient настроена загрузка по сети.</p>
 
-<p>Теперь мы приступаем к настройке Pxe-сервера.<br />
-Для настроки хоста с помощью Ansible создадим структуру директорий и файлов в отдельной папке ansible.</p>
+<p>Теперь мы приступаем к настройке PXE-сервера.<br />
+Для настроки хоста с помощью Ansible создадим необходимые файлы и структуру директорий в отдельной папке ansible:</p>
 
 <pre>[user@localhost dhcp_pxe]$ mkdir ./ansible && cd ./ansible
-[user@localhost dhcp_pxe]$ mkdir ./roles && cd ./roles
-[user@localhost dhcp_pxe]$ ansible-galaxy init dhcp_pxe
-</pre>
+[user@localhost ansible]$</pre>
+
+<p>Создадим конфигурационный файл ansible.cfg, который описывает базовые настройки
+для работы Ansible:</p>
+
+<pre>[user@localhost dhcp_pxe]$ vi ./ansible.cfg</pre>
+
+<pre>[defaults]
+#Отключение проверки ключа хоста
+host_key_checking = false
+#Указываем имя файла инвентаризации
+inventory = hosts
+#Отключаем игнорирование предупреждений
+command_warnings= false</pre>
+
+<p>Создадим файл инвентаризации hosts, который хранит информацию о том, как
+подключиться к хосту:</p>
+
+<pre>[user@localhost dhcp_pxe]$ vi ./hosts</pre>
+
+<pre>[servers]
+pxeserver ansible_host=192.168.50.10 ansible_user=vagrant
+ansible_ssh_private_key_file=.vagrant/machines/inetRouter/virtualbox/pri
+vate_key</pre>
+
+<p>где:<br />
+● [servers] - в квадратных скобках указана группа хостов<br />
+● pxeserver — имя нашего хоста (имена хостов и групп не могут быть одинаковые)<br />
+● ansible_host — адрес нашего хоста<br />
+● ansible_user — имя пользователя, с помощью которого Ansible будет подключаться к хосту<br />
+● ansible_ssh_private_key — адрес расположения ssh-ключа</p>
+
+<p>Создадим файл playbook.yml — основной файл, в котором содержатся инструкции (модули) по настройке для Ansible:</p>
+
+<pre>[user@localhost dhcp_pxe]$ vi ./playbook.yml</pre>
+
+<pre>---
+- name: CentOS_PXE | Install and Configure
+  hosts: all
+  become: true
+
+  roles:
+    - { role: dhcp_pxe, when: ansible_system == 'Linux' }</pre>
+
+<p>Создадим директорий roles и структуру директорий dhcp_pxe:</p>
+
+<pre>[user@localhost ansible]$ mkdir ./roles && cd ./roles
+[user@localhost roles]$ ansible-galaxy init dhcp_pxe
+- Role dhcp_pxe was created successfully
+[user@localhost roles]$</pre>
+
+<h4>Настройка Web-сервера</h4>
+
+
 

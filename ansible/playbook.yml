@@ -1,0 +1,7 @@
+---
+- name: CentOS_PXE | Install and Configure
+  hosts: all
+  become: true
+
+  roles:
+    - { role: dhcp_pxe, when: ansible_system == 'Linux' }
