@@ -1,0 +1,11 @@
+---
+# tasks file for dhcp_pxe
+
+#sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-Linux-*
+- name: copy ks.cfg
+  copy:
+    src: ks.cfg
+    dest: /iso/ks.cfg
+    owner: root
+    group: root
+    mode: 0755    

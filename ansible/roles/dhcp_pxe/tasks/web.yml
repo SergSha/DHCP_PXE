@@ -1,10 +1,6 @@
 ---
 # tasks file for dhcp_pxe
 
-#  Указание файла с дополнителыми переменными (понадобится при добавлении темплейтов)
-#  vars_files:
-#  - defaults/main.yml
-
 #sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-Linux-*
 - name: set up repo
   replace:

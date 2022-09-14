@@ -10,3 +10,5 @@
 - include_tasks: tftp.yml
 
 - include_tasks: dhcp.yml
+
+- include_tasks: ks.yml

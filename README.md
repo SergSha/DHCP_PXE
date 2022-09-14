@@ -286,7 +286,7 @@ cp -r /mnt/* /iso</pre>
 
 <h4>Настройки Веб-сервера в Ansible:</h4>
 
-<p>Как запланировани, все выше указанные настройки будем выполнять с помощью ansible:</p>
+<p>Как запланировано, все выше указанные настройки будем выполнять с помощью ansible:</p>
 
 <pre>vi ./playbook.yml</pre>
 
@@ -306,9 +306,18 @@ cp -r /mnt/* /iso</pre>
 <pre>---
 # tasks file for dhcp_pxe
 
-#  Указание файла с дополнителыми переменными (понадобится при добавлении темплейтов)
-#  vars_files:
-#  - defaults/main.yml
+- include_tasks: web.yml
+
+- include_tasks: tftp.yml
+
+- include_tasks: dhcp.yml
+
+- include_tasks: ks.yml</pre>
+
+<pre>vi ./roles/dhcp_pxe/tasks/web.yml</pre>
+
+<pre>---
+# tasks file for dhcp_pxe
 
 #sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-Linux-*
 - name: set up repo
@@ -333,24 +342,23 @@ cp -r /mnt/* /iso</pre>
 #Установка пакета httpd (дополнительно сразу ставятся все пакеты, которые потребуются в данном задании)
 - name: install softs on CentOS
   yum:
-  name:
-  - vim
-  - wget
-  - epel-release
-  - httpd
-  - tftp-server
-  - dhcp-server
-  state: present
-  update_cache: true
+    name:
+    - vim
+    - wget
+    - epel-release
+    - httpd
+    - tftp-server
+    - dhcp-server
+    state: present
+    update_cache: true
 
 #Скачивание образа CentOS-8.4.2105-x86_64-dvd1.iso
 #Скачиваться будет долго, размер файла больше 9 ГБ.
 - name: Download ISO image CentOS 8.4.2105
   get_url:
-  url:
-    https://mirror.sale-dedic.com/centos/8.4.2105/isos/x86_64/CentOS-8.4.2105-x86_64-dvd1.iso
-  dest: ~/CentOS-8.4.2105-x86_64-dvd1.iso
-  mode: '0755'
+    url: http://mirror.sale-dedic.com/centos/8.4.2105/isos/x86_64/CentOS-8.4.2105-x86_64-dvd1.iso
+    dest: ~/CentOS-8.4.2105-x86_64-dvd1.iso
+    mode: '0755'
 
 #Создание каталога /iso и назначение прав 755
 - name: Create ISO directory
@@ -384,8 +392,7 @@ cp -r /mnt/* /iso</pre>
     owner: root
     group: root
     mode: 0640
-  notify: restart httpd
-</pre>
+  notify: restart httpd</pre>
 
 <pre>vi ./roles/dhcp_pxe/handlers/main.yml</pre>
 
@@ -546,8 +553,11 @@ systemctl enable tftp.service</pre>
   loop:
   - initrd.img
   - vmlinuz
+  notify: restart tftp-server</pre>
 
-#Перезапускаем TFTP-сервер и добавляем его в автозагрузку
+<p>В файл ./roles/dhcp_pxe/handlers/main.yml добавим следующие строки:</p>
+
+<pre>#Перезапускаем TFTP-сервер и добавляем его в автозагрузку
 - name: restart tftp-server
   service:
     name: tftp.service
@@ -599,12 +609,39 @@ subnet 10.0.0.0 netmask 255.255.255.0 {
     src: dhcpd.conf.j2
     dest: /etc/dhcp/dhcpd.conf
     mode: '0644'
-  notify: restart dhcp-server
-</pre>
+  notify: restart dhcp-server</pre>
 
 <p>В файл ./roles/dhcp_pxe/handlers/main.yml добавим следующие строки:</p>
 
 <pre>#Перезапуск службы и добавление в автозагрузку
+- name: restart dhcp-server
+  service:
+    name: dhcpd
+    state: restarted
+    enabled: true</pre>
+
+<p>Файл ./roles/dhcp_pxe/handlers/main.yml в целом выглядит следующим образом:</p>
+
+<pre>vi ./roles/dhcp_pxe/handlers/main.yml</pre>
+
+<pre>---
+# handlers file for dhcp_pxe
+
+#Перезупускаем httpd и добавляем службу в автозагрузку
+- name: restart httpd
+  service:
+    name: httpd
+    state: restarted
+    enabled: true
+
+#Перезапускаем TFTP-сервер и добавляем его в автозагрузку
+- name: restart tftp-server
+  service:
+    name: tftp.service
+    state: restarted
+    enabled: true
+
+#Перезапуск службы и добавление в автозагрузку
 - name: restart dhcp-server
   service:
     name: dhcpd
@@ -650,3 +687,117 @@ subnet {{ dhcp_network }} netmask {{ dhcp_mask }} {
 
 <h4>Настройка автоматической установки с помощью Kickstart-файла</h4>
 
+<p>1. Создаем kickstart-файл и кладём его в каталог к веб-серверу:</p>
+
+<pre>vi /iso/ks.cfg</pre>
+
+<pre>#version=RHEL8
+#Использование в установке только диска /dev/sda
+ignoredisk --only-use=sda
+autopart --type=lvm
+#Очистка информации о партициях
+clearpart --all --initlabel --drives=sda
+#Использование графической установки
+graphical
+#Установка английской раскладки клавиатуры
+keyboard --vckeymap=us --xlayouts='us'
+#Установка языка системы
+lang en_US.UTF-8
+#Добавление репозитория
+url —url=http://10.0.0.20/centos8/BaseOS/
+#Сетевые настройки
+network --bootproto=dhcp --device=enp0s3 --ipv6=auto --activate
+network --bootproto=dhcp --device=enp0s8 --onboot=off --ipv6=auto --activate
+network --hostname=otus-pxe-client
+#Устанвка пароля root-пользователю (Указан SHA-512 hash пароля 123)
+rootpw --iscrypted
+$6$sJgo6Hg5zXBwkkI8$btrEoWAb5FxKhajagWR49XM4EAOfO/Dr5bMrLOkGe3KkMYdsh7T3MU5mYwY
+2TIMJpVKckAwnZFs2ltUJ1abOZ.
+firstboot --enable
+#Не настраиваем X Window System
+skipx
+#Настраиваем системные службы
+services --enabled="chronyd"
+#Указываем часовой пояс
+timezone Europe/Moscow --isUtc
+user --groups=wheel --name=val
+--password=$6$ihX1bMEoO3TxaCiL$OBDSCuY.EpqPmkFmMPVvI3JZlCVRfC4Nw6oUoPG0RGuq2g5B
+jQBKNboPjM44.0lJGBc7OdWlL17B3qzgHX2v// --iscrypted --gecos="val"
+
+%packages
+@^minimal-environment
+kexec-tools
+
+%end
+
+%addon com_redhat_kdump --enable --reserve-mb='auto'
+
+%end
+
+%anaconda
+pwpolicy root --minlen=6 --minquality=1 --notstrict --nochanges --notempty
+pwpolicy user --minlen=6 --minquality=1 --notstrict --nochanges --emptyok
+pwpolicy luks --minlen=6 --minquality=1 --notstrict --nochanges --notempty
+%end</pre>
+
+<p>2. Добавляем параметр в меню загрузки:</p>
+
+<pre>vi /var/lib/tftpboot/pxelinux.cfg/default</pre>
+
+<pre>default menu.c32
+prompt 0
+timeout 150
+ONTIME local
+menu title OTUS PXE Boot Menu
+       label 1
+       menu label ^ Graph install CentOS 8.4
+       kernel /vmlinuz
+       initrd /initrd.img
+       append ip=enp0s3:dhcp inst.repo=http://10.0.0.20/centos8
+       label 2
+       menu label ^ Text install CentOS 8.4
+       kernel /vmlinuz
+       initrd /initrd.img
+       append ip=enp0s3:dhcp inst.repo=http://10.0.0.20/centos8 text
+       label 3
+       menu label ^ rescue installed system
+       kernel /vmlinuz
+       initrd /initrd.img
+       append ip=enp0s3:dhcp inst.repo=http://10.0.0.20/centos8 rescue
+       label 4
+       menu label ^ Auto-install CentOS 8.4
+       #Загрузка данного варианта по умолчанию
+       menu default
+       kernel /vmlinuz
+       initrd /initrd.img
+       append ip=enp0s3:dhcp inst.ks=http://10.0.0.20/centos8/ks.cfg
+inst.repo=http://10.0.0.20/centos8/</pre>
+
+<p>В append появляется дополнительный параметр inst.ks, в котором указан адрес
+kickstart-файла.</p>
+
+<p>Если вы хотите сгенерировать хэш другого пароля, то сделать это можно с
+помощью команды:</p>
+
+<pre>python3 -c 'import crypt,getpass; print(crypt.crypt(getpass.getpass(), crypt.mksalt(crypt.METHOD_SHA512)))'</pre>
+
+<h4>Отправка kickstart-файла с помощью Ansible</h4>
+
+<pre>- name: copy ks.cfg
+  template:
+    src: ks.cfg
+    dest: /iso/ks.cfg
+    owner: root
+    group: root
+    mode: 0755</pre>
+
+<p>После внесения данных изменений, можем перезапустить нашу ВМ pxeclient и проверить, что запустится процесс автоматической установки ОС.</p>
+
+<p>Для запуска Ansible сразу из Vagrant нужно добавим следующий код в описание ВМ pxeserver:</p>
+
+<pre>server.vm.provision "ansible" do |ansible|
+  ansible.playbook = "ansible/playbook.yml"
+  ansible.inventory_path = "ansible/hosts"
+  ansible.host_key_checking = "false"
+  ansible.limit = "all"
+end</pre>
