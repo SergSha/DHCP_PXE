@@ -266,9 +266,9 @@ cp -r /mnt/* /iso</pre>
 <pre>Alias /centos8 /iso
 #Указываем адрес директории /iso
 &lt;Directory /iso&gt;
-Options Indexes FollowSymLinks
-#Разрешаем подключения со всех ip-адресов
-Require all granted</pre>
+    Options Indexes FollowSymLinks
+    #Разрешаем подключения со всех ip-адресов
+    Require all granted</pre>
 
 <p>● Перезапускаем веб-сервер:</p>
 
@@ -284,97 +284,120 @@ Require all granted</pre>
 ● Далее проверям доступность файлов по сети:<br />
 Если файлы доступны, значит веб-сервер настроен корректно.</p>
 
-<h4>Пример настройки Веб-сервера в Ansible:</h4>
+<h4>Настройки Веб-сервера в Ansible:</h4>
 
-<pre>#Начало файла provision.yml
-name: Set up PXE Server
-#Указываем имя хоста или группу, которые будем настраивать
-hosts: pxeserver
-#Параметр выполнения модулей от root-пользователя
-become: yes
-#Указание файла с дополнителыми переменными (понадобится при добавлении
-темплейтов)
-vars_files:
-- defaults/main.yml
-tasks:
+<p>Как запланировани, все выше указанные настройки будем выполнять с помощью ansible:</p>
+
+<pre>vi ./playbook.yml</pre>
+
+<pre>---
+- name: CentOS_PXE | Set up PXE Server
+  #Указываем имя хоста или группу, которые будем настраивать
+  hosts: pxeserver
+  #Параметр выполнения модулей от root-пользователя
+  become: true
+
+  roles:
+    - { role: dhcp_pxe, when: ansible_system == 'Linux' }
+</pre>
+
+<pre>vi ./roles/dhcp_pxe/tasks/main.yml</pre>
+
+<pre>---
+# tasks file for dhcp_pxe
+
+#  Указание файла с дополнителыми переменными (понадобится при добавлении темплейтов)
+#  vars_files:
+#  - defaults/main.yml
+
 #sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-Linux-*
 - name: set up repo
-replace:
-9path: "{{ item }}"
-regexp: 'mirrorlist'
-replace: '#mirrorlist'
-with_items:
-- /etc/yum.repos.d/CentOS-Linux-AppStream.repo
-- /etc/yum.repos.d/CentOS-Linux-BaseOS.repo
-#sed -i
-'s|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g'
-/etc/yum.repos.d/CentOS-Linux-*
+  replace:
+    path: "{{ item }}"
+    regexp: 'mirrorlist'
+    replace: '#mirrorlist'
+  loop:
+  - /etc/yum.repos.d/CentOS-Linux-AppStream.repo
+  - /etc/yum.repos.d/CentOS-Linux-BaseOS.repo
+
+#sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-Linux-*
 - name: set up repo
-replace:
-path: "{{ item }}"
-regexp: '#baseurl=http://mirror.centos.org'
-replace: 'baseurl=http://vault.centos.org'
-with_items:
-- /etc/yum.repos.d/CentOS-Linux-AppStream.repo
-- /etc/yum.repos.d/CentOS-Linux-BaseOS.repo
-#Установка пакета httpd (дополнительно сразу ставятся все пакеты, которые
-потребуются в данном задании)
+  replace:
+    path: "{{ item }}"
+    regexp: '#baseurl=http://mirror.centos.org'
+    replace: 'baseurl=http://vault.centos.org'
+  loop:
+  - /etc/yum.repos.d/CentOS-Linux-AppStream.repo
+  - /etc/yum.repos.d/CentOS-Linux-BaseOS.repo
+
+#Установка пакета httpd (дополнительно сразу ставятся все пакеты, которые потребуются в данном задании)
 - name: install softs on CentOS
-yum:
-name:
-- vim
-- wget
-- epel-release
-- httpd
-- tftp-server
-- dhcp-server
-state: present
-update_cache: true
+  yum:
+  name:
+  - vim
+  - wget
+  - epel-release
+  - httpd
+  - tftp-server
+  - dhcp-server
+  state: present
+  update_cache: true
+
 #Скачивание образа CentOS-8.4.2105-x86_64-dvd1.iso
 #Скачиваться будет долго, размер файла больше 9 ГБ.
 - name: Download ISO image CentOS 8.4.2105
-get_url:
-url:
-https://mirror.sale-dedic.com/centos/8.4.2105/isos/x86_64/CentOS-8.4.2105-x86
-_64-dvd1.iso
-dest: ~/CentOS-8.4.2105-x86_64-dvd1.iso
-mode: '0755'
+  get_url:
+  url:
+    https://mirror.sale-dedic.com/centos/8.4.2105/isos/x86_64/CentOS-8.4.2105-x86_64-dvd1.iso
+  dest: ~/CentOS-8.4.2105-x86_64-dvd1.iso
+  mode: '0755'
+
 #Создание каталога /iso и назначение прав 755
 - name: Create ISO directory
-file:
-path: /iso
-state: directory
-mode: '0755'
+  file:
+    path: /iso
+    state: directory
+    mode: '0755'
+
 #Монтируем образ в каталог /mnt
 - name: Mount ISO image
-mount:
-path: /mnt
-10src: /root/CentOS-8.4.2105-x86_64-dvd1.iso
-fstype: iso9660
-opts: ro,loop
-state: mounted
+  mount:
+    path: /mnt
+    src: /root/CentOS-8.4.2105-x86_64-dvd1.iso
+    fstype: iso9660
+    opts: ro,loop
+    state: mounted
+
 #Копируем все файлы из каталога /mnt в /iso
 - name: copy ALL files from /mnt to /iso
-copy:
-src: /mnt/
-dest: /iso
-remote_src: yes
-directory_mode: yes
-#Копируем конфгурационный файл pxeboot.conf (Файл должен быть предварительно
-создан в каталаге templates)
+  copy:
+    src: /mnt/
+    dest: /iso
+    remote_src: yes
+    directory_mode: yes
+
+#Копируем конфгурационный файл pxeboot.conf (Файл должен быть предварительно создан в каталаге templates)
 - name: set up httpd config
-template:
-src: pxeboot.conf
-dest: /etc/httpd/conf.d/pxeboot.conf
-owner: root
-group: root
-mode: 0640
+  copy:
+    src: pxeboot.conf
+    dest: /etc/httpd/conf.d/pxeboot.conf
+    owner: root
+    group: root
+    mode: 0640
+  notify: restart httpd
+</pre>
+
+<pre>vi ./roles/dhcp_pxe/handlers/main.yml</pre>
+
+<pre>---
+# handlers file for dhcp_pxe
+
 #Перезупускаем httpd и добавляем службу в автозагрузку
 - name: restart httpd
-service:
-name: httpd
-state: restarted
-enabled: true</pre>
+  service:
+    name: httpd
+    state: restarted
+    enabled: true</pre>
 
 <p>На этом настройка веб-сервера завершена.</p>
 
@@ -392,17 +415,16 @@ enabled: true</pre>
 
 <pre>systemctl status tftp.service
 ● tftp.service - Tftp Server
-Loaded: loaded (/usr/lib/systemd/system/tftp.service; indirect; vendor
-preset: disabled)
-Active: active (running) since Sun 2022-02-06 20:53:28 UTC; 4s ago
-Docs: man:in.tftpd
-Main PID: 7732 (in.tftpd)
-Tasks: 1 (limit: 4953)
-Memory: 248.0K
-CGroup: /system.slice/tftp.service
-└─7732 /usr/sbin/in.tftpd -s /var/lib/tftpboot
-Feb 06 20:53:28 pxeserver systemd[1]: Started Tftp Server.
-11[root@pxeserver ~]#</pre>
+   Loaded: loaded (/usr/lib/systemd/system/tftp.service; indirect; vendor preset: disabled)
+   Active: active (running) since Sun 2022-02-06 20:53:28 UTC; 4s ago
+     Docs: man:in.tftpd
+ Main PID: 7732 (in.tftpd)
+    Tasks: 1 (limit: 4953)
+   Memory: 248.0K
+   CGroup: /system.slice/tftp.service
+           └─7732 /usr/sbin/in.tftpd -s /var/lib/tftpboot
+Sep 14 10:53:28 pxeserver systemd[1]: Started Tftp Server.
+[root@pxeserver ~]#</pre>
 
 <p>В статусе видим, что рабочий каталог /var/lib/tftpboot.</p>
 
@@ -422,26 +444,26 @@ timeout 150
 ONTIME local
 #Имя «шапки» нашего меню
 menu title OTUS PXE Boot Menu
-#Описание первой строки
-label 1
-#Имя, отображаемое в первой строке
-menu label ^ Graph install CentOS 8.4
-#Адрес ядра, расположенного на TFTP-сервере
-kernel /vmlinuz
-#Адрес файла initrd, расположенного на TFTP-сервере
-initrd /initrd.img
-#Получаем адрес по DHCP и указываем адрес веб-сервера
-append ip=enp0s3:dhcp inst.repo=http://10.0.0.20/centos8
-label 2
-menu label ^ Text install CentOS 8.4
-kernel /vmlinuz
-initrd /initrd.img
-append ip=enp0s3:dhcp inst.repo=http://10.0.0.20/centos8 text
-label 3
-menu label ^ rescue installed system
-kernel /vmlinuz
-initrd /initrd.img
-append ip=enp0s3:dhcp inst.repo=http://10.0.0.20/centos8 rescue</pre>
+       #Описание первой строки
+       label 1
+       #Имя, отображаемое в первой строке
+       menu label ^ Graph install CentOS 8.4
+       #Адрес ядра, расположенного на TFTP-сервере
+       kernel /vmlinuz
+       #Адрес файла initrd, расположенного на TFTP-сервере
+       initrd /initrd.img
+       #Получаем адрес по DHCP и указываем адрес веб-сервера
+       append ip=enp0s3:dhcp inst.repo=http://10.0.0.20/centos8
+       label 2
+       menu label ^ Text install CentOS 8.4
+       kernel /vmlinuz
+       initrd /initrd.img
+       append ip=enp0s3:dhcp inst.repo=http://10.0.0.20/centos8 text
+       label 3
+       menu label ^ rescue installed system
+       kernel /vmlinuz
+       initrd /initrd.img
+       append ip=enp0s3:dhcp inst.repo=http://10.0.0.20/centos8 rescue</pre>
 
 <p>Label 1-3 различаются только дополнительными параметрами:<br />
 ● label 1 — установка вручную в графическом режиме<br />
@@ -453,16 +475,15 @@ append ip=enp0s3:dhcp inst.repo=http://10.0.0.20/centos8 rescue</pre>
 <pre>rpm2cpio /iso/BaseOS/Packages/syslinux-tftpboot-6.04-5.el8.noarch.rpm | cpio -dimv</pre>
 
 <p>7. После распаковки в каталоге пользователя root будет создан каталог tftpboot из которого потребуется скопировать следующие файлы:</p>
+- pxelinux.0<br />
+- ldlinux.c32<br />
+- libmenu.c32<br />
+- libutil.c32<br />
+- menu.c32<br />
+- vesamenu.c32</p>
 
-<pre>- pxelinux.0
-- ldlinux.c32
-- libmenu.c32
-- libutil.c32
-- menu.c32
-- vesamenu.c32
-cd tftpboot
-12cp pxelinux.0 ldlinux.c32 libmenu.c32 libutil.c32 menu.c32 vesamenu.c32
-/var/lib/tftpboot/</pre>
+<pre>cd tftpboot
+cp pxelinux.0 ldlinux.c32 libmenu.c32 libutil.c32 menu.c32 vesamenu.c32 /var/lib/tftpboot/</pre>
 
 <p>8. Также в каталог /var/lib/tftpboot/ нам потребуется скопировать файлы initrd.img и vmlinuz, которые располагаются в каталоге /iso/images/pxeboot/:</p>
 
@@ -475,54 +496,63 @@ systemctl enable tftp.service</pre>
 
 <h4>Настройка TFTP-сервера в Ansible:</h4>
 
-<pre>#Создаём каталог /var/lib/tftpboot/pxelinux.cfg
+<pre>vi ./roles/dhcp_pxe/main/tftp.yml</pre>
+
+<pre>---
+# tasks file for dhcp_pxe
+
+#Создаём каталог /var/lib/tftpboot/pxelinux.cfg
 - name: Create TFTP directory
-file:
-path: /var/lib/tftpboot/pxelinux.cfg
-state: directory
-mode: '0755'
+  file:
+    path: /var/lib/tftpboot/pxelinux.cfg
+    state: directory
+    mode: '0755'
+
 #Копируем файл-меню на сервер
 - name: set up pxelinux
-template:
-src: default
-dest: /var/lib/tftpboot/pxelinux.cfg/default
-owner: root
-group: root
-mode: 0644
+  template:
+    src: default
+    dest: /var/lib/tftpboot/pxelinux.cfg/default
+    owner: root
+    group: root
+    mode: 0644
+
 #Извлекаем файлы из RPM-пакета
 - name: extract packages syslinux
-shell: rpm2cpio
-/iso/BaseOS/Packages/syslinux-tftpboot-6.04-5.el8.noarch.rpm | cpio -dimv
+  shell: rpm2cpio /iso/BaseOS/Packages/syslinux-tftpboot-6.04-5.el8.noarch.rpm | cpio -dimv
+
 #Копируем файлы в каталог /var/lib/tftpboot/
 - name: copy files to TFTP share
-copy:
-src: /home/vagrant/tftpboot/{{ item }}
-dest: /var/lib/tftpboot/{{ item }}
-mode: '0644'
-remote_src: true
-with_items:
-- pxelinux.0
-- ldlinux.c32
-- libmenu.c32
-- libutil.c32
-- menu.c32
-- vesamenu.c32
+  copy:
+    src: /home/vagrant/tftpboot/{{ item }}
+    dest: /var/lib/tftpboot/{{ item }}
+    mode: '0644'
+    remote_src: true
+  loop:
+  - pxelinux.0
+  - ldlinux.c32
+  - libmenu.c32
+  - libutil.c32
+  - menu.c32
+  - vesamenu.c32
+
 #Копируем файлы в каталог /var/lib/tftpboot/
 - name: copy initrd and vmlinuz files to TFTP share
-copy:
-src: /iso/images/pxeboot/{{ item }}
-13dest: /var/lib/tftpboot/{{ item }}
-mode: '0755'
-remote_src: true
-with_items:
-- initrd.img
-- vmlinuz
+  copy:
+    src: /iso/images/pxeboot/{{ item }}
+    dest: /var/lib/tftpboot/{{ item }}
+    mode: '0755'
+    remote_src: true
+  loop:
+  - initrd.img
+  - vmlinuz
+
 #Перезапускаем TFTP-сервер и добавляем его в автозагрузку
 - name: restart tftp-server
-service:
-name: tftp.service
-state: restarted
-enabled: true</pre>
+  service:
+    name: tftp.service
+    state: restarted
+    enabled: true</pre>
 
 <h4>Настройка DHCP-сервера</h4>
 
@@ -543,36 +573,47 @@ option architecture-type code 93 = unsigned integer 16;
 
 #Указываем сеть и маску подсети, в которой будет работать DHCP-сервер
 subnet 10.0.0.0 netmask 255.255.255.0 {
-#Указываем шлюз по умолчанию, если потребуется
-#option routers 10.0.0.1;
-#Указываем диапазон адресов
-range 10.0.0.100 10.0.0.120;
-class "pxeclients" {
-match if substring (option vendor-class-identifier, 0, 9) = "PXEClient";
-#Указываем адрес TFTP-сервера
-next-server 10.0.0.20;
-#Указываем имя файла, который надо запустить с TFTP-сервера
-filename "pxelinux.0";
-}</pre>
+        #Указываем шлюз по умолчанию, если потребуется
+        #option routers 10.0.0.1;
+        #Указываем диапазон адресов
+        range 10.0.0.100 10.0.0.120;
+		
+        class "pxeclients" {
+          match if substring (option vendor-class-identifier, 0, 9) = "PXEClient";
+          #Указываем адрес TFTP-сервера
+          next-server 10.0.0.20;
+          #Указываем имя файла, который надо запустить с TFTP-сервера
+          filename "pxelinux.0";
+        }</pre>
 
-<h4>Настройка DHCP-сервера в Ansible</h4>
+<h4>Настройка DHCP-сервера в Ansible:</h4>
 
-<pre>#Копирование файла конфигурации DHCP-сервера
+<pre>vi ./roles/dhcp_pxe/main/dhcp.yml</pre>
+
+<pre>---
+# tasks file for dhcp_pxe
+
+#Копирование файла конфигурации DHCP-сервера
 - name: set up dhcp-server
-template:
-src: dhcpd.conf
-dest: /etc/dhcp/dhcpd.conf
-mode: '0644'
-#Перезапуск службы и добавление в автозагрузку
+  template:
+    src: dhcpd.conf.j2
+    dest: /etc/dhcp/dhcpd.conf
+    mode: '0644'
+  notify: restart dhcp-server
+</pre>
+
+<p>В файл ./roles/dhcp_pxe/handlers/main.yml добавим следующие строки:</p>
+
+<pre>#Перезапуск службы и добавление в автозагрузку
 - name: restart dhcp-server
-service:
-14name: dhcpd
-state: restarted
-enabled: true</pre>
+  service:
+    name: dhcpd
+    state: restarted
+    enabled: true</pre>
 
 <p>При копировании файла конфигурации можно использовать Jinja2 Template, который будет обращаться к переменным из файла defaults/main.yml.</p>
 
-<p>Пример файла dhcpd.conf</p>
+<p>Файл dhcpd.conf.j2:</p>
 
 <pre>option space pxelinux;
 option pxelinux.magic code 208 = string;
@@ -580,14 +621,15 @@ option pxelinux.configfile code 209 = text;
 option pxelinux.pathprefix code 210 = text;
 option pxelinux.reboottime code 211 = unsigned integer 32;
 option architecture-type code 93 = unsigned integer 16;
+
 subnet {{ dhcp_network }} netmask {{ dhcp_mask }} {
-range {{ dhcp_range_min }} {{ dhcp_range_max }};
-class "pxeclients" {
-match if substring (option vendor-class-identifier, 0, 9) =
-"PXEClient";
-next-server {{ pxe_server }};
-filename "pxelinux.0";
-}
+    range {{ dhcp_range_min }} {{ dhcp_range_max }};
+		 
+    class "pxeclients" {
+        match if substring (option vendor-class-identifier, 0, 9) = "PXEClient";
+        next-server {{ pxe_server }};
+        filename "pxelinux.0";
+    }
 }</pre>
 
 <p>Переменные, которые заключены в двойные скобки будут описаны в файле defaults/main.yml.</p>
@@ -595,4 +637,16 @@ filename "pxelinux.0";
 <p>На данном этапе мы закончили настройку PXE-сервера для ручной установки сервера. Давайте попробуем запустить процесс установки вручную, для удобства воспользуемся установкой через графический интерфейс:<br />
 В настройках виртуальной машины pxeclient рекомендуется поменять графический контроллер на VMSVGA и добавить видеопамяти. Видеопамять должна стать 20 МБ или больше.</p>
 
+
+<p>С такими настройками картинка будет более плавная и не будет постоянно мигать.<br />
+Нажимаем ОК, выходим из настроек ВМ и запускаем её.<br />
+Выбираем графическую установку.<br />
+После этого, будут скачаны необходимые файлы с веб-сервера.<br />
+Как только появится окно установки, нам нужно будет поочереди пройти по всем компонентам и указать с какими параметрами мы хотим установить ОС:<br />
+Иногда с разделом Installation Source случаются проблемы, и репозиторий не подтягивается автоматически. В этом случае нужно руками указать адрес репозитория: http://10.0.0.20/centos8/BaseOS</p>
+<p>После установки всех, нужных нам параметров нажимаем Begin installation.<br />
+После этого начнётся установка системы, после установки всех компонентов нужно будет перезагрузить ВМ и запуститься с диска.</p>
+<p>Если нам не хочется вручную настраивать каждую установку, то мы можем автоматизировать этот процесс с помощью файла автоматиеской установки (kickstart file)</p>
+
+<h4>Настройка автоматической установки с помощью Kickstart-файла</h4>
 

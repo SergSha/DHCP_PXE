@@ -1,6 +1,8 @@
 ---
-- name: CentOS_PXE | Install and Configure
-  hosts: all
+- name: CentOS_PXE | Set up PXE Server
+  #Указываем имя хоста или группу, которые будем настраивать
+  hosts: pxeserver
+  #Параметр выполнения модулей от root-пользователя
   become: true
 
   roles:
