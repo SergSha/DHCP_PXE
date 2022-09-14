@@ -1,8 +1,8 @@
 ---
 # defaults file for dhcp_pxe
 
-dhcp_network = 10.0.0.17
-dhcp_mask = 255.255.255.240
-dhcp_range_min = 10.0.0.21
-dhcp_range_max = 10.0.0.30
-pxe_server = 10.0.0.20
+dhcp_network: 10.0.0.17
+dhcp_mask: 255.255.255.240
+dhcp_range_min: 10.0.0.21
+dhcp_range_max: 10.0.0.30
+pxe_server: 10.0.0.20

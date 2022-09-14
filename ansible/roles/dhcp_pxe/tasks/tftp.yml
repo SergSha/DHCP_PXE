@@ -46,10 +46,4 @@
   loop:
   - initrd.img
   - vmlinuz
-
-#Перезапускаем TFTP-сервер и добавляем его в автозагрузку
-- name: restart tftp-server
-  service:
-    name: tftp.service
-    state: restarted
-    enabled: true
+  notify: restart tftp-server
