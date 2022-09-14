@@ -809,6 +809,8 @@ kickstart-файла.</p>
 
 <h4>Отправка kickstart-файла с помощью Ansible</h4>
 
+<pre>vi ./roles/dhcp_pxe/tasks/ks.yml</pre>
+
 <pre>- name: copy ks.cfg
   template:
     src: ks.cfg
@@ -816,8 +818,6 @@ kickstart-файла.</p>
     owner: root
     group: root
     mode: 0755</pre>
-
-<p>После внесения данных изменений, можем перезапустить нашу ВМ pxeclient и проверить, что запустится процесс автоматической установки ОС.</p>
 
 <p>Для запуска Ansible сразу из Vagrant нужно добавим следующий код в описание ВМ pxeserver:</p>
 
@@ -827,3 +827,8 @@ kickstart-файла.</p>
   ansible.host_key_checking = "false"
   ansible.limit = "all"
 end</pre>
+
+<p>После внесения данных изменений, можем перезапускаем нашу ВМ pxeclient и проверить, что запустится процесс автоматической установки ОС:</p>
+
+<img src="./screens/Screenshot-08.png" alt="Screenshot-08.png" />
+
