@@ -10,7 +10,7 @@
 
 #Копируем файл-меню на сервер
 - name: set up pxelinux
-  template:
+  copy:
     src: default
     dest: /var/lib/tftpboot/pxelinux.cfg/default
     owner: root
@@ -46,4 +46,5 @@
   loop:
   - initrd.img
   - vmlinuz
-  notify: restart tftp-server
+  notify: 
+  - restart tftp-server

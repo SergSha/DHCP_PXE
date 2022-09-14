@@ -9,9 +9,7 @@ Vagrant.configure("2") do |config|
     server.vm.disk :disk, size: "15GB", name: "extra_storage1"
 
     server.vm.host_name = 'pxeserver'
-    server.vm.network :private_network, 
-                     ip: "10.0.0.20", 
-                     virtualbox__intnet: 'pxenet'
+    server.vm.network :private_network, ip: "10.0.0.20", virtualbox__intnet: 'pxenet'
     server.vm.network :private_network, ip: "192.168.50.10", adapter: 3
 
     server.vm.network "forwarded_port", guest: 80, host: 8081
@@ -41,7 +39,7 @@ Vagrant.configure("2") do |config|
     config.vm.define "pxeclient" do |pxeclient|
       pxeclient.vm.box = 'bento/centos-8.4'
       pxeclient.vm.host_name = 'pxeclient'
-      pxeclient.vm.network :private_network, ip: "10.0.0.21"
+      pxeclient.vm.network :private_network, ip: "10.0.0.21", virtualbox__intnet: 'pxenet'
       pxeclient.vm.provider :virtualbox do |vb|
         vb.memory = "2048"
         vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]

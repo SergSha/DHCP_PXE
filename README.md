@@ -236,8 +236,11 @@ vate_key</pre>
 <pre>sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-Linux-*
 sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-Linux-*</pre>
 
-<p>1. Устанавливаем Web-сервер Apache: yum install httpd<br />
-2. Далее скачиваем образ CentOS 8.4.2150:</p>
+<p>1. Устанавливаем Web-сервер Apache:</p>
+
+<pre>yum install httpd</pre>
+
+<p>2. Далее скачиваем образ CentOS 8.4.2150:</p>
 
 <pre>wget https://mirror.sale-dedic.com/centos/8.4.2105/isos/x86_64/CentOS-8.4.2105-x86_64-dvd1.iso</pre>
 
@@ -279,12 +282,18 @@ cp -r /mnt/* /iso</pre>
 <pre>systemctl enable httpd</pre>
 
 <p>7. Проверяем, что веб-сервер работает и каталог /iso доступен по сети:<br />
-● С нашего компьютера сначала подключаемся к тестовой странице Apache:<br />
-Если страница открылась, значит веб-сервер запустился.<br />
-● Далее проверям доступность файлов по сети:<br />
-Если файлы доступны, значит веб-сервер настроен корректно.</p>
+● С нашего компьютера сначала подключаемся к тестовой странице Apache:</p>
 
-<h4>Настройки Веб-сервера в Ansible:</h4>
+<img src="./screens/Screenshot-01.png" alt="Screenshot-01.png" />
+
+<p>Если страница открылась, значит веб-сервер запустился.</p>
+<p>● Далее проверям доступность файлов по сети:</p>
+
+<img src="./screens/Screenshot-02.png" alt="Screenshot-02.png" />
+
+<p>Если файлы доступны, значит веб-сервер настроен корректно.</p>
+
+<h4>Настройки Веб-сервера в Ansible</h4>
 
 <p>Как запланировано, все выше указанные настройки будем выполнять с помощью ansible:</p>
 
@@ -392,7 +401,8 @@ cp -r /mnt/* /iso</pre>
     owner: root
     group: root
     mode: 0640
-  notify: restart httpd</pre>
+  notify: 
+  - restart httpd</pre>
 
 <pre>vi ./roles/dhcp_pxe/handlers/main.yml</pre>
 
@@ -420,17 +430,18 @@ cp -r /mnt/* /iso</pre>
 
 <p>3. Проверяем, в каком каталоге будут храиться файлы, которые будет отдавать TFTP-сервер:</p>
 
-<pre>systemctl status tftp.service
+<pre>[root@pxeserver ~]# systemctl status tftp.service
 ● tftp.service - Tftp Server
    Loaded: loaded (/usr/lib/systemd/system/tftp.service; indirect; vendor preset: disabled)
-   Active: active (running) since Sun 2022-02-06 20:53:28 UTC; 4s ago
+   Active: active (running) since Wed 2022-09-14 21:29:30 UTC; 1min 37s ago
      Docs: man:in.tftpd
- Main PID: 7732 (in.tftpd)
+ Main PID: 11522 (in.tftpd)
     Tasks: 1 (limit: 4953)
-   Memory: 248.0K
+   Memory: 240.0K
    CGroup: /system.slice/tftp.service
-           └─7732 /usr/sbin/in.tftpd -s /var/lib/tftpboot
-Sep 14 10:53:28 pxeserver systemd[1]: Started Tftp Server.
+           └─11522 /usr/sbin/in.tftpd -s /var/lib/tftpboot
+
+Sep 14 21:29:30 pxeserver systemd[1]: Started Tftp Server.
 [root@pxeserver ~]#</pre>
 
 <p>В статусе видим, что рабочий каталог /var/lib/tftpboot.</p>
@@ -553,7 +564,8 @@ systemctl enable tftp.service</pre>
   loop:
   - initrd.img
   - vmlinuz
-  notify: restart tftp-server</pre>
+  notify: 
+  - restart tftp-server</pre>
 
 <p>В файл ./roles/dhcp_pxe/handlers/main.yml добавим следующие строки:</p>
 
@@ -609,7 +621,8 @@ subnet 10.0.0.0 netmask 255.255.255.0 {
     src: dhcpd.conf.j2
     dest: /etc/dhcp/dhcpd.conf
     mode: '0644'
-  notify: restart dhcp-server</pre>
+  notify: 
+  - restart dhcp-server</pre>
 
 <p>В файл ./roles/dhcp_pxe/handlers/main.yml добавим следующие строки:</p>
 
@@ -674,15 +687,28 @@ subnet {{ dhcp_network }} netmask {{ dhcp_mask }} {
 <p>На данном этапе мы закончили настройку PXE-сервера для ручной установки сервера. Давайте попробуем запустить процесс установки вручную, для удобства воспользуемся установкой через графический интерфейс:<br />
 В настройках виртуальной машины pxeclient рекомендуется поменять графический контроллер на VMSVGA и добавить видеопамяти. Видеопамять должна стать 20 МБ или больше.</p>
 
+<img src="./screens/Screenshot-03.png" alt="Screenshot-03.png" />
 
 <p>С такими настройками картинка будет более плавная и не будет постоянно мигать.<br />
 Нажимаем ОК, выходим из настроек ВМ и запускаем её.<br />
+
+<img src="./screens/Screenshot-04.png" alt="Screenshot-04.png" />
+
 Выбираем графическую установку.<br />
 После этого, будут скачаны необходимые файлы с веб-сервера.<br />
 Как только появится окно установки, нам нужно будет поочереди пройти по всем компонентам и указать с какими параметрами мы хотим установить ОС:<br />
+
+<img src="./screens/Screenshot-05.png" alt="Screenshot-05.png" />
+
 Иногда с разделом Installation Source случаются проблемы, и репозиторий не подтягивается автоматически. В этом случае нужно руками указать адрес репозитория: http://10.0.0.20/centos8/BaseOS</p>
-<p>После установки всех, нужных нам параметров нажимаем Begin installation.<br />
-После этого начнётся установка системы, после установки всех компонентов нужно будет перезагрузить ВМ и запуститься с диска.</p>
+<p>После установки всех, нужных нам параметров нажимаем Begin installation.</p>
+
+<img src="./screens/Screenshot-06.png" alt="Screenshot-06.png" />
+
+<p>После этого начнётся установка системы, после установки всех компонентов нужно будет перезагрузить ВМ и запуститься с диска.</p>
+
+<img src="./screens/Screenshot-07.png" alt="Screenshot-07.png" />
+
 <p>Если нам не хочется вручную настраивать каждую установку, то мы можем автоматизировать этот процесс с помощью файла автоматиеской установки (kickstart file)</p>
 
 <h4>Настройка автоматической установки с помощью Kickstart-файла</h4>
