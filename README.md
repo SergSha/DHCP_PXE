@@ -796,8 +796,7 @@ menu title OTUS PXE Boot Menu
        menu default
        kernel /vmlinuz
        initrd /initrd.img
-       append ip=enp0s3:dhcp inst.ks=http://10.0.0.20/centos8/ks.cfg
-inst.repo=http://10.0.0.20/centos8/</pre>
+       append ip=enp0s3:dhcp inst.ks=http://10.0.0.20/centos8/ks.cfg inst.repo=http://10.0.0.20/centos8/</pre>
 
 <p>В append появляется дополнительный параметр inst.ks, в котором указан адрес
 kickstart-файла.</p>
