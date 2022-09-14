@@ -5,7 +5,8 @@
 #  vars_files:
 #  - defaults/main.yml
 
-- include_tasks: 
-  - web.yml
-  - tftp.yml
-  - dhcp.yml
+- include_tasks: web.yml
+
+- include_tasks: tftp.yml
+
+- include_tasks: dhcp.yml
