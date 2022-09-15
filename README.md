@@ -196,9 +196,7 @@ command_warnings= false</pre>
 <pre>[user@localhost dhcp_pxe]$ vi ./hosts</pre>
 
 <pre>[servers]
-pxeserver ansible_host=192.168.50.10 ansible_user=vagrant
-ansible_ssh_private_key_file=.vagrant/machines/inetRouter/virtualbox/pri
-vate_key</pre>
+pxeserver ansible_host=192.168.50.10 ansible_user=vagrant ansible_ssh_private_key_file=.vagrant/machines/inetRouter/virtualbox/private_key</pre>
 
 <p>где:<br />
 ● [servers] - в квадратных скобках указана группа хостов<br />
