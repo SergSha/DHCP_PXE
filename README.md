@@ -830,4 +830,7 @@ end</pre>
 <p>После внесения данных изменений, можем перезапускаем нашу ВМ pxeclient и проверить, что запустится процесс автоматической установки ОС:</p>
 
 <img src="./screens/Screenshot-08.png" alt="Screenshot-08.png" />
-
+<img src="./screens/Screenshot-09.png" alt="Screenshot-09.png" />
+<img src="./screens/Screenshot-10.png" alt="Screenshot-10.png" />
+<img src="./screens/Screenshot-11.png" alt="Screenshot-11.png" />
+<img src="./screens/Screenshot-12.png" alt="Screenshot-12.png" />
