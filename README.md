@@ -271,7 +271,8 @@ cp -r /mnt/* /iso</pre>
 &lt;Directory /iso&gt;
     Options Indexes FollowSymLinks
     #Разрешаем подключения со всех ip-адресов
-    Require all granted</pre>
+    Require all granted
+&lt;/Directory&gt;</pre>
 
 <p>● Перезапускаем веб-сервер:</p>
 
